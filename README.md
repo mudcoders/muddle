@@ -31,6 +31,7 @@ Learn more about Electron and its API in the [documentation](http://electron.ato
   - [ ] Themes
   - [ ] Triggers
   - [ ] Aliases
+  - [ ] Tabs
 - [ ] Protocols
   - [ ] MXP
   - [ ] MSSP
