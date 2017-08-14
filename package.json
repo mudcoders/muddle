@@ -26,6 +26,7 @@
     "electron-prebuilt": "^0.37.0"
   },
   "dependencies": {
+    "create-react-class": "^15.6.0",
     "react": "^15.0.1",
     "react-dom": "^15.0.1"
   }

@@ -1,9 +1,39 @@
 @import 'reset.css';
 
+* {
+  margin: 0;
+  padding: 0;
+  text-rendering: optimizeLegibility;
+  box-sizing: border-box;
+}
+
 body {
     overflow: hidden;
-    background: #000;
+    background: #0b1015;
     line-height: 1.3;
+    -webkit-backface-visibility: hidden;
+    font-family: Menlo, "DejaVu Sans Mono", Consolas, "Lucida Console", monospace;
+    font-size: 14px;
+}
+
+@media (min-resolution: 2dppx) {
+  * {
+    text-rendering: geometricPrecision;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  -webkit-border-radius: 10px;
+  border-radius: 10px;
+  background: #333;
+}
+
+::-webkit-scrollbar-thumb:window-inactive {
+  background: #333;
 }
 
 .main-frame {
@@ -13,35 +43,63 @@ body {
     top: 0;
     left: 0;
 }
+
 .main-frame td {
     vertical-align: top;
 }
-.main-frame > tbody > tr:first-child {
-    height: 100%;
-}
-.main-frame > tbody > tr:nth-child(2) {
-    height: 20px;
+
+.main-frame .titlebar {
+  height: 25px;
+  border-bottom: 1px solid #171727;
 }
 
-.output-window {
+.main-frame .output-window {
+    height: 100%;
+}
+
+.output-window #output {
     white-space: pre-wrap;
-    background: #000;
     color: #aaa;
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 100%;
-    padding: 5px;
-}
-.input-window input {
-    display: block;
-    height: 20px;
-    width: 100%;
+    padding: 0 10px 0 10px;
 }
 
-.output-window, .input-window input {
-    font-family: 'Consolas', monospace;
-    font-size: 12px;
+.input-window {
+  border-top: 1px solid #171727;
+}
+
+.input-window .input {
+    margin: 10px 5px 10px 10px;
     padding: 5px;
+    line-height: 20px;
+    background-color: #040507;
+    color: #fff;
+    border: 1px solid #171727;
+    border-radius: 3px;
+    outline: none;
+}
+
+.input-window .input.password {
+  -webkit-text-security: disc;
+}
+
+.input-window .input:focus {
+  border-color: #5eebb8;
+  box-shadow: 0 0 0 1px #5eebb8;
+}
+
+.input-window .button {
+  background-color: #272737;
+  color: #fff;
+  text-align: center;
+  line-height: 20px;
+  padding: 5px;
+  border-radius: 3px;
+  outline: none;
+  margin: 10px 10px 10px 5px;
+  cursor: pointer;
 }
 
 .black { color: #000; }

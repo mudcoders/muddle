@@ -1,10 +1,11 @@
 var React = require('react');
 var ReactDOM = require('react-dom');
 var Net = require('net');
+var createReactClass = require('create-react-class');
 
-var MuddleOutputLine = React.createClass({
+var MuddleOutputLine = createReactClass({
     shouldComponentUpdate: function() {
-        return !this.lineIsFinalized();
+        return true;//!this.lineIsFinalized();
     },
     lineIsFinalized: function() {
         return !this.props.line.finalized;
@@ -13,31 +14,30 @@ var MuddleOutputLine = React.createClass({
         var ESC = String.fromCharCode(27);
 
         var output = rawInput
-            .replace(new RegExp(ESC + '\\[0m', 'g'), '<span class="reset">')
-
-            .replace(new RegExp(ESC + '\\[0;30m', 'g'), '<span class="black">')
-            .replace(new RegExp(ESC + '\\[0;31m', 'g'), '<span class="red">')
-            .replace(new RegExp(ESC + '\\[0;32m', 'g'), '<span class="green">')
-            .replace(new RegExp(ESC + '\\[0;33m', 'g'), '<span class="yellow">')
-            .replace(new RegExp(ESC + '\\[0;34m', 'g'), '<span class="blue">')
-            .replace(new RegExp(ESC + '\\[0;35m', 'g'), '<span class="magenta">')
-            .replace(new RegExp(ESC + '\\[0;36m', 'g'), '<span class="cyan">')
-            .replace(new RegExp(ESC + '\\[0;37m', 'g'), '<span class="lightgrey">')
-
-            .replace(new RegExp(ESC + '\\[1;30m', 'g'), '<span class="grey">')
-            .replace(new RegExp(ESC + '\\[1;31m', 'g'), '<span class="lightred">')
-            .replace(new RegExp(ESC + '\\[1;32m', 'g'), '<span class="lightgreen">')
-            .replace(new RegExp(ESC + '\\[1;33m', 'g'), '<span class="lightyellow">')
-            .replace(new RegExp(ESC + '\\[1;34m', 'g'), '<span class="lightblue">')
-            .replace(new RegExp(ESC + '\\[1;35m', 'g'), '<span class="lightmagenta">')
-            .replace(new RegExp(ESC + '\\[1;36m', 'g'), '<span class="lightcyan">')
-            .replace(new RegExp(ESC + '\\[1;37m', 'g'), '<span class="white">')
+            .replace(new RegExp(ESC + '\\[(0;)?0m', 'g'), '<font class="reset">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;30m', 'g'), '<font class="black">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;31m', 'g'), '<font class="red">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;32m', 'g'), '<font class="green">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;33m', 'g'), '<font class="yellow">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;34m', 'g'), '<font class="blue">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;35m', 'g'), '<font class="magenta">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;36m', 'g'), '<font class="cyan">')
+            .replace(new RegExp(ESC + '\\[(0;)?0;37m', 'g'), '<font class="lightgrey">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;30m', 'g'), '<font class="grey">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;31m', 'g'), '<font class="lightred">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;32m', 'g'), '<font class="lightgreen">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;33m', 'g'), '<font class="lightyellow">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;34m', 'g'), '<font class="lightblue">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;35m', 'g'), '<font class="lightmagenta">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;36m', 'g'), '<font class="lightcyan">')
+            .replace(new RegExp(ESC + '\\[(0;)?1;37m', 'g'), '<font class="white">')
             ;
 
-        var amountOfColors = (output.match(/<span/g) || []).length;
+        var amountOfColors = (output.match(/<font/g) || []).length;
 
+        // close out any open colors
         for (var x = 0; x < amountOfColors; x++) {
-            output += '</span>';
+            output += '</font>';
         }
 
         return output;
@@ -48,21 +48,25 @@ var MuddleOutputLine = React.createClass({
         };
     },
     render: function() {
-        return React.createElement('div', {
+        return React.createElement('span', {
             dangerouslySetInnerHTML: this.getHtml(),
             key: this.props.line ? this.props.line.id : Math.random(),
         }, null); //, this.props.line ? this.props.line.message : '');
     }
 });
 
-var Muddle = React.createClass({
+var Muddle = createReactClass({
     connect: function(hostname, port) {
-        var self = this;
         this.socket = Net.connect(port, hostname, this.onConnect);
         this.socket.on('data', this.onSocketData);
         this.socket.on('end', this.onSocketDisconnect);
+        this.echo = true;
+    },
+    onConnect: function(conn) {
+      console.log("READY TO ROCK AND ROLL!");
     },
     onSocketData: function(data) {
+        this.executeCommands(data);
         this.handleOutput(data.toString());
     },
     onSocketDisconnect: function() {
@@ -74,34 +78,53 @@ var Muddle = React.createClass({
             self.connect(self.state.hostname, self.state.port);
         }, this.state.reconnectSeconds * 1000);
     },
+    executeCommands: function(data) {
+      var ECHO = 1;
+      var IAC  = 255;
+      var WILL = 251;
+      var WONT = 252;
+
+      var self = this;
+
+      data.forEach(function(character, index) {
+        if ( character == IAC && !!data[index + 2] ) {
+          if ( data[index + 2] == ECHO ) {
+            switch ( data[ index + 1 ] ) {
+              case WILL:
+                self.echo = false;
+                break;
+              case WONT:
+                self.echo = true;
+                break;
+              default:
+                // unsupported command
+                console.log("Unsupported command: " + data[index + 1]);
+                break;
+            }
+          }
+        }
+      });
+    },
     handleOutput: function(message) {
-        var self = this;
-        var lastChar = message ? message[message.length - 1] : null;
-        var endsWithNewline = lastChar === '\n' || lastChar === '\r';
-        var lines = message.split('\n');
+        // strip unrenderable characters
+        message = message.replace(/[^\x00-\x7E]/g, '');
 
-        lines.forEach(function(line, index) {
-            line = line.replace(/[\r\n]/g, '');
+        // completely drop CR newlines
+        message = message.replace(/\r/g, '')
 
-            if (!line) {
-                line = ' ';
-            }
-            var lastLine = index === lines.length - 1;
-            var previousLastLine = self.state.output.length ? self.state.output[self.state.output.length - 1] : null;
-            var finalized = !lastLine || endsWithNewline;
+        // convert LF newlines to breaks
+        message = message.replace(/\n/g, '<br />');
 
-            // If the previous last line wasn't ending in a newline, append to it
-            if (previousLastLine && !previousLastLine.finalized) {
-                previousLastLine.message += line;
-                previousLastLine.finalized = finalized;
-            } else {
-                self.uniqueId++;
-                self.state.output.push({
-                    id: self.uniqueId,
-                    message: line,
-                    finalized: finalized
-                });
-            }
+        // can't have an empty line, per-se
+        if ( !message ) {
+            message = ' ';
+        }
+
+        this.uniqueId++;
+
+        this.state.output.push({
+            id: this.uniqueId,
+            message: message,
         });
 
         this.setState({
@@ -109,7 +132,6 @@ var Muddle = React.createClass({
         });
     },
     handleInput: function(message) {
-        //this.socket.send(message + '\n');
         this.socket.write(message + '\n');
     },
     componentDidMount: function() {
@@ -127,59 +149,71 @@ var Muddle = React.createClass({
     },
     getInitialState: function() {
         return {
-            hostname: 'waterdeep.org',
-            port: 4200,
-
+            hostname: 'oasis.mudcoders.com',
+            port: 1234,
             reconnectSeconds: 2,
-
             output: [],
-
             inputMessage: '',
             inputMessageHistory: [],
             inputHistoryLines: 10
         };
     },
-    handleKeypress: function(e) {
-        var message = e.target.value;
+    handleKeyDown: function(e) {
+        // don't render the newline in the input field
         if (e.keyCode === 13) {
-            this.handleOutput('> ' + message + '\n');
-            this.handleInput(message);
-            this.selectAllInput();
+          e.preventDefault();
+          this.submitInput(e);
         }
     },
-    handleInputClick: function(e) {
-        this.selectAllInput();
+    submitInput: function(e) {
+      var message = this.refs.input.textContent;
+
+      this.resetInput();
+
+      if ( this.echo ) {
+        this.handleOutput(' ' + message + '\n');
+      } else {
+        this.handleOutput('\n');
+      }
+
+      this.handleInput(message);
     },
     focusInput: function() {
         this.refs.input.focus();
     },
-    selectAllInput: function() {
-        this.refs.input.select();
+    resetInput: function() {
+        this.refs.input.textContent = "";
     },
     componentDidUpdate() {
         var elem = this.refs.outputWindow;
-        if (!elem) {
+
+        if ( !elem ) {
             return;
         }
+
         elem.scrollTop = elem.scrollHeight;
         this.focusInput();
     },
     render: function() {
         return React.createElement('div', { className: 'muddle', onClick: this.focusInput, onKeyDown: this.focusInput }, [
-            React.createElement('table', { className: 'main-frame' }, [
-                React.createElement('tbody', null, [
-                    React.createElement('tr', null, [
-                        React.createElement('td', null, [
-                            React.createElement('div', { ref: 'outputWindow', className: 'output-window' }, [
+            React.createElement('table', { key: Math.random(), className: 'main-frame' }, [
+                React.createElement('tbody', { key: Math.random() }, [
+                    React.createElement('tr', { key: Math.random(), className: 'titlebar' }, [
+                        React.createElement('td', { key: Math.random(), colSpan: 2}, null)
+                    ]),
+                    React.createElement('tr', { key: Math.random(), className: 'output-window' }, [
+                        React.createElement('td', { key: Math.random(), colSpan: 2}, [
+                            React.createElement('div', { key: Math.random(), ref: 'outputWindow', id: 'output' }, [
                                 this.renderLines(this.state.output),
                             ])
                         ])
                     ]),
-                    React.createElement('tr', null, [
-                        React.createElement('td', null, [
-                            React.createElement('div', { className: 'input-window' }, [
-                                React.createElement('input', { type: 'text', ref: 'input', onKeyUp: this.handleKeypress })
-                            ])
+                    React.createElement('tr', { key: Math.random(), className: 'input-window' }, [
+                        React.createElement('td', { key: Math.random() }, [
+                          React.createElement('div', { key: Math.random(), contentEditable: true, className: 'input' + (this.echo ? '' : ' password'), ref: 'input', onKeyDown: this.handleKeyDown })
+                        ]),
+                        React.createElement('td', { key: Math.random(), width: '150px' }, [
+                            React.createElement('div', { key: Math.random(), className: 'button', ref: 'submit', onClick: this.submitInput }, 'Send')
                         ])
                     ])
                 ])
