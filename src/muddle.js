@@ -1,9 +1,10 @@
 var React = require('react');
 var ReactDOM = require('react-dom');
+var ContentEditable = require("react-contenteditable");
 var Net = require('net');
-var createReactClass = require('create-react-class');
+var CreateReactClass = require('create-react-class');
 
-var MuddleOutputLine = createReactClass({
+var MuddleOutputLine = CreateReactClass({
     shouldComponentUpdate: function() {
         return true;//!this.lineIsFinalized();
     },
@@ -55,7 +56,7 @@ var MuddleOutputLine = createReactClass({
     }
 });
 
-var Muddle = createReactClass({
+var Muddle = CreateReactClass({
     connect: function(hostname, port) {
         this.socket = Net.connect(port, hostname, this.onConnect);
         this.socket.on('data', this.onSocketData);
@@ -165,8 +166,11 @@ var Muddle = createReactClass({
           this.submitInput(e);
         }
     },
+    handleChange: function(e) {
+      this.setState({inputMessage: e.target.value});
+    },
     submitInput: function(e) {
-      var message = this.refs.input.textContent;
+      var message = this.state.inputMessage;
 
       this.resetInput();
 
@@ -179,10 +183,10 @@ var Muddle = createReactClass({
       this.handleInput(message);
     },
     focusInput: function() {
-        this.refs.input.focus();
+        this.refs.input.htmlEl.focus();
     },
     resetInput: function() {
-        this.refs.input.textContent = "";
+        this.setState({inputMessage: ""});
     },
     componentDidUpdate() {
         var elem = this.refs.outputWindow;
@@ -193,9 +197,34 @@ var Muddle = createReactClass({
 
         elem.scrollTop = elem.scrollHeight;
         this.focusInput();
+
+        // BUG jumps to the end of the line, even if the cursor isn't at the end
+        this.setEndOfContenteditable(this.refs.input.htmlEl);
+    },
+    /**
+     * Source: https://stackoverflow.com/questions/1125292/how-to-move-cursor-to-end-of-contenteditable-entity/3866442#3866442}
+     */
+    setEndOfContenteditable: function(contentEditableElement)
+    {
+        //Create a range (a range is a like the selection but invisible)
+        var range = document.createRange();
+
+        //Select the entire contents of the element with the range
+        range.selectNodeContents(contentEditableElement);
+
+        //collapse the range to the end point. false means collapse to end rather than the start
+        range.collapse(false);
+
+        //get the selection object (allows you to change selection)
+        var selection = window.getSelection();
+        //remove any selections already made
+        selection.removeAllRanges();
+
+        //make the range you have just created the visible selection
+        selection.addRange(range);
     },
     render: function() {
-        return React.createElement('div', { className: 'muddle', onClick: this.focusInput, onKeyDown: this.focusInput }, [
+        return React.createElement('div', { className: 'muddle' }, [
             React.createElement('table', { key: Math.random(), className: 'main-frame' }, [
                 React.createElement('tbody', { key: Math.random() }, [
                     React.createElement('tr', { key: Math.random(), className: 'titlebar' }, [
@@ -210,7 +239,14 @@ var Muddle = createReactClass({
                     ]),
                     React.createElement('tr', { key: Math.random(), className: 'input-window' }, [
                         React.createElement('td', { key: Math.random() }, [
-                          React.createElement('div', { key: Math.random(), contentEditable: true, className: 'input' + (this.echo ? '' : ' password'), ref: 'input', onKeyDown: this.handleKeyDown })
+                          React.createElement(ContentEditable, {
+                            key: Math.random(),
+                            className: 'input' + (this.echo ? '' : ' password'),
+                            ref: 'input',
+                            html: this.state.inputMessage,
+                            onChange: this.handleChange,
+                            onKeyDown: this.handleKeyDown
+                          })
                         ]),
                         React.createElement('td', { key: Math.random(), width: '150px' }, [
                             React.createElement('div', { key: Math.random(), className: 'button', ref: 'submit', onClick: this.submitInput }, 'Send')
